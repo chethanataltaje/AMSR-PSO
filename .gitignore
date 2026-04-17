@@ -1,0 +1,16 @@
+venv/
+**pycache**/
+*.pyc
+.env
+
+# ignore raw datasets
+
+files/data/
+UNSW-NB15_*.csv
+*_testing-set.csv
+
+# keep results
+
+!files/results/*.csv
+
+
