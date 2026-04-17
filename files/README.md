@@ -19,10 +19,10 @@ The system leverages **GPU parallelism (Numba CUDA)** to significantly speed up 
 
 ## Key Features
 
-* ⚡ **CUDA Acceleration** using Numba
-* 🧠 **Adaptive Multi-Swarm PSO**
-* 🎯 **Feature Selection Optimization**
-* 📊 Benchmarking on multiple datasets:
+* **CUDA Acceleration** using Numba
+* **Adaptive Multi-Swarm PSO**
+* **Feature Selection Optimization**
+* Benchmarking on multiple datasets:
 
   * KDD Cup 1999
   * UNSW-NB15
@@ -85,49 +85,16 @@ This will:
 * Save results in `results/`
 * Generate plots in `figures/`
 
----
-
-### 3️⃣ Run Streamlit Dashboard (Recommended)
-
-```bash
-streamlit run app_streamlit.py
-```
-
-👉 Opens interactive dashboard at:
+--
 
 ```
 http://localhost:8501
-```
-
----
-
-### 4️⃣ Run HTML Dashboard (Optional)
-
-If using FastAPI:
-
-```bash
-uvicorn app:app --reload
-```
-
-Then open:
+``
 
 ```
 index.html
 ```
 
----
-
-## Results Summary
-
-| Dataset   | Accuracy | Feature Reduction | Features Selected |
-| --------- | -------- | ----------------- | ----------------- |
-| KDD Cup   | ~99.3%   | ~94%              | ~2–6              |
-| UNSW-NB15 | ~??%     | ~??%              | ~??               |
-| HIGGS     | ~66.6%   | ~70%              | ~8                |
-
-> Replace `??` with your actual values for final submission
-
----
 
 ## Visualizations
 
