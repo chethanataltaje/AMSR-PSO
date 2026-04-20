@@ -44,11 +44,6 @@ def plot_convergence(convergence_data: dict, out_path: str = None):
         ax.fill_between(iters, mean_conv - std_conv, mean_conv + std_conv,
                         alpha=0.2, color=COLORS[0])
 
-        # Simulated baseline PSO for visual comparison
-        # Replace this with actual baseline convergence if you collect it
-        pso_conv = mean_conv * np.linspace(0.85, 1.0, len(mean_conv))[::-1]
-        ax.plot(iters, pso_conv, color=COLORS[1], linewidth=2.0,
-                linestyle="--", label="Standard BPSO")
 
         ax.set_xlabel("Iteration", fontsize=13)
         ax.set_ylabel("Best Fitness", fontsize=13)
@@ -112,62 +107,62 @@ def plot_tradeoff(results_csv_paths: list, out_path: str = None):
     plt.close()
 
 
-# ─── Fig 6: Ablation Study ───────────────────────────────────────────────────
-
-def plot_ablation(ablation_results: dict, dataset_name: str, out_path: str = None):
-    """
-    ablation_results: dict mapping variant_name → accuracy float
-    e.g. {
-        "Full CUDA-AMSR-PSO": 0.94,
-        "No Multi-swarm":     0.91,
-        "No Reinforced Inertia": 0.89,
-        "No Redundancy Penalty": 0.90,
-        "Standard BPSO":     0.87
-    }
-    """
-    names = list(ablation_results.keys())
-    accs  = [ablation_results[n] * 100 for n in names]
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    bars = ax.barh(names, accs, color=[COLORS[0]] + [COLORS[1]] * (len(names) - 2) + [COLORS[2]],
-                   edgecolor="white", height=0.6)
-
-    for bar, val in zip(bars, accs):
-        ax.text(val + 0.1, bar.get_y() + bar.get_height() / 2,
-                f"{val:.2f}%", va="center", fontsize=11)
-
-    ax.set_xlabel("Accuracy (%)", fontsize=13)
-    ax.set_title(f"Ablation Study — {dataset_name}", fontsize=14)
-    ax.set_xlim(min(accs) - 3, max(accs) + 3)
-    ax.grid(axis="x", alpha=0.4)
-
-    out = out_path or os.path.join(FIGURES_DIR, "ablation.png")
-    plt.tight_layout()
-    plt.savefig(out, dpi=200, bbox_inches="tight")
-    print(f"  Saved: {out}")
-    plt.close()
-
 
 # ─── Fig 7: Runtime Comparison ───────────────────────────────────────────────
 
-def plot_runtime(runtime_data: dict, out_path: str = None):
+def plot_runtime(results_csv_paths: list, out_path: str = None):
     """
-    runtime_data: dict of {method_name: runtime_seconds}
+    Builds runtime comparison directly from experiment CSV outputs.
+    Each CSV contains "Method" and "Runtime (s)" as "mean ± std".
     """
-    methods  = list(runtime_data.keys())
-    runtimes = list(runtime_data.values())
 
+    import pandas as pd
+    import numpy as np
+
+    runtime_data = {}
+
+    # ── Extract runtime from all CSVs ─────────────────────────────
+    for path in results_csv_paths:
+        if not os.path.exists(path):
+            continue
+
+        df = pd.read_csv(path)
+
+        for _, row in df.iterrows():
+            method = row["Method"]
+
+            try:
+                # Extract mean from "mean ± std"
+                val = float(str(row["Runtime (s)"]).split("±")[0].strip())
+            except:
+                continue
+
+            if method not in runtime_data:
+                runtime_data[method] = []
+
+            runtime_data[method].append(val)
+
+    # ── Average across datasets ──────────────────────────────────
+    runtime_avg = {k: np.mean(v) for k, v in runtime_data.items()}
+
+    methods  = list(runtime_avg.keys())
+    runtimes = list(runtime_avg.values())
+
+    # ── Plot ─────────────────────────────────────────────────────
     fig, ax = plt.subplots(figsize=(9, 5))
+
     bars = ax.bar(methods, runtimes,
                   color=[COLORS[i % len(COLORS)] for i in range(len(methods))],
                   edgecolor="white", width=0.5)
 
     for bar, val in zip(bars, runtimes):
-        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.5,
+        ax.text(bar.get_x() + bar.get_width() / 2, val + max(runtimes)*0.02,
                 f"{val:.1f}s", ha="center", fontsize=11)
 
     ax.set_ylabel("Runtime (seconds)", fontsize=13)
+    ax.set_yscale("log")
     ax.set_title("Runtime Comparison Across Methods", fontsize=14)
+    ax.set_xticks(range(len(methods)))
     ax.set_xticklabels(methods, rotation=20, ha="right")
     ax.grid(axis="y", alpha=0.4)
 
@@ -202,26 +197,17 @@ if __name__ == "__main__":
     else:
         print("  No results CSV files found — run experiment_runner.py first.")
 
-    # ── Fig 6: Ablation Study (fill with your real measured values) ───────
-    # Replace the values below with your actual measured accuracies
-    ablation = {
-        "Full CUDA-AMSR-PSO":       0.940,
-        "w/o Multi-swarm (1 swarm)":0.912,
-        "w/o Reinforced Inertia":   0.901,
-        "w/o Redundancy Penalty":   0.907,
-        "Standard BPSO":            0.878,
-    }
-    plot_ablation(ablation, dataset_name="KDD Cup 1999")
+
 
     # ── Fig 7: Runtime ────────────────────────────────────────────────────
     # Replace with your measured runtimes from experiment_runner output
-    runtime_data = {
-        "Info Gain":         2.1,
-        "RFE":               45.3,
-        "Standard BPSO":     120.4,
-        "CPU-AMSR-PSO":      98.2,
-        "CUDA-AMSR-PSO":     31.7,
-    }
-    plot_runtime(runtime_data)
+    csv_files = [os.path.join(RESULTS_DIR, f)
+             for f in os.listdir(RESULTS_DIR)
+             if f.endswith("_results.csv")]
+
+    if csv_files:
+        plot_runtime(csv_files)
+    else:
+        print("No results CSV files found.")
 
     print("\nAll figures saved to ./figures/")
