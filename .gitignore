@@ -1,16 +1,33 @@
+# Virtual Environment
 venv/
-**pycache**/
+
+# Python Cache
+__pycache__/
 *.pyc
+
+# Environment Files
 .env
 
-# ignore raw datasets
+# =========================
+# DATASETS
+# =========================
 
-files/data/
-UNSW-NB15_*.csv
-*_testing-set.csv
+data/*.csv
+data/*.zip
+data/*.gz
 
-# keep results
+# =========================
+# LARGE GENERATED FILES
+# =========================
 
-!files/results/*.csv
+results/*.npy
+ablation_results/*.npy
+
+# =========================
+# KEEP RESULT CSV FILES
+# =========================
+
+!results/*.csv
+!ablation_results/*.csv
 
 

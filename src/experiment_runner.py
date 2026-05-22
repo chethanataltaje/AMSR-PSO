@@ -153,7 +153,7 @@ def compute_metrics(y_true, y_pred, n_selected, n_total, runtime, train_acc=None
 
 
 # ─── FULL EXPERIMENT ─────────────────────────────────────────────────────────
-def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")):
+def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ablation_results"), run_baselines=True):
     os.makedirs(output_dir, exist_ok=True)
     print(f"\n{'#'*75}")
     print(f"  EXPERIMENT: {dataset_name} (Numba CUDA Version)")
@@ -188,25 +188,27 @@ def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.pat
         D = X_tr.shape[1]
         row = {"Run": run}
 
-        # Baselines
-        t0 = time.time()
-        preds, k = baseline_info_gain(X_tr, y_tr, X_te, y_te, clf)
-        row["Information Gain"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
+        if run_baselines:
+            t0 = time.time()
+            preds, k = baseline_info_gain(X_tr, y_tr, X_te, y_te, clf)
+            row["Information Gain"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
 
-        t0 = time.time()
-        try:
-            preds, k = baseline_rfe(X_tr, y_tr, X_te, y_te, clf)
-            row["RFE"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
-        except Exception as ex:
-            print(f"  RFE failed: {ex}")
-            row["RFE"] = None
+            t0 = time.time()
+            try:
+                preds, k = baseline_rfe(X_tr, y_tr, X_te, y_te, clf)
+                row["RFE"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
+            except Exception as ex:
+                print(f"  RFE failed: {ex}")
+                row["RFE"] = None
 
-        t0 = time.time()
-        preds, k = baseline_pso_standard(X_tr, y_tr, X_te, y_te, clf)
-        row["Standard BPSO"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
+            t0 = time.time()
+            preds, k = baseline_pso_standard(X_tr, y_tr, X_te, y_te, clf)
+            row["Standard BPSO"] = compute_metrics(y_te, preds, k, D, time.time()-t0)
 
         # ── CUDA-AMSR-PSO with Numba CUDA ─────────────────────────────────
         t0 = time.time()
+
+        variant_name = "no_dependency"
 
         cfg = AMSRPSOConfig()
 
@@ -222,9 +224,16 @@ def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.pat
             cfg.n_swarms    = 3
             cfg.n_iter      = 80
             cfg.cv_folds    = 5
+            
+        # 🔴 ONLY CHANGE FOR THIS ABLATION
+        cfg.gamma = 0.0
 
         print(f"DEBUG: Final config → N={cfg.n_particles}, T={cfg.n_iter}, CV={cfg.cv_folds}")
+        print("variant:", variant_name)
+        print("swarms:", cfg.n_swarms)
+        print("gamma:", cfg.gamma)
 
+        
         pso = CUDA_AMSR_PSO(config=cfg, classifier=clone_clf(clf))
         dep = compute_dependency_matrix(X_tr)
         pso.fit(X_tr, y_tr, dep_matrix=dep)
@@ -247,7 +256,10 @@ def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.pat
         all_rows.append(row)
 
     # Aggregate
-    methods = ["Information Gain", "RFE", "Standard BPSO", "CUDA-AMSR-PSO"]
+    if run_baselines:
+        methods = ["Information Gain", "RFE", "Standard BPSO", "CUDA-AMSR-PSO"]
+    else:
+        methods = ["CUDA-AMSR-PSO"]
     table_rows = []
 
     for method in methods:
@@ -268,10 +280,19 @@ def run_experiment(X, y, dataset_name: str, n_runs: int = 3, output_dir = os.pat
     print(f"{'='*75}")
     print(df_table.to_string(index=False))
 
-    csv_path = os.path.join(output_dir, f"{dataset_name.replace(' ','_')}_results.csv")
+    
+   
+
+    csv_path = os.path.join(
+        output_dir,
+        f"{dataset_name.replace(' ','_')}_{variant_name}.csv"
+    )
     df_table.to_csv(csv_path, index=False)
 
-    conv_path = os.path.join(output_dir, f"{dataset_name.replace(' ','_')}_convergence.npy")
+    conv_path = os.path.join(
+        output_dir,
+        f"{dataset_name.replace(' ','_')}_{variant_name}_convergence.npy"
+    )
     np.save(conv_path, np.array(cuda_convergences))
 
     print(f"\n  Results saved to {output_dir}/")
@@ -294,7 +315,7 @@ if __name__ == "__main__":
 
     for X, y, name in datasets:
         print(f"\n=== Starting {name} ===")
-        run_experiment(X, y, name, n_runs=3)
+        run_experiment(X, y, name, n_runs=3, run_baselines=False)
 
     print("\n\n All experiments completed successfully!")
     

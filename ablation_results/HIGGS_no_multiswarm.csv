@@ -1,0 +1,2 @@
+Method,Accuracy (%),F1-score,Precision,Recall,Reduction (%),Runtime (s),N_features,Train_Acc (%),Gap (%)
+CUDA-AMSR-PSO,66.47 ± 0.05,0.69 ± 0.00,0.68 ± 0.00,0.70 ± 0.01,71.43 ± 2.91,3561.39 ± 452.52,8.00 ± 0.82,77.89 ± 0.33,11.43 ± 0.33
